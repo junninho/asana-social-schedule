@@ -1,17 +1,19 @@
 import boto3
 import base64
 from botocore.exceptions import ClientError
-from ast import literal_eval
 import asana
-import requests
 import json
-from datetime import date, timedelta
+import pytz
+from datetime import date, timedelta, datetime
+
+
 
 
 def get_secret():
 
     secret_name = "asana-social-schedule"
     region_name = "us-east-2"
+    secret="temp"
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -43,16 +45,17 @@ def get_secret():
         else:
             decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
 
-    return(literal_eval(secret))
+    return json.loads(secret)
 
 
-def createTask():
-    today = date.today()
+def createTask(event, context):
+    today = datetime.now(pytz.timezone('US/Eastern'))
+
     start = today + timedelta(days=7)
     two_weeks = today + timedelta(days=21)
 
-
-    token = get_secret().get('personal_token')
+    token_dict = get_secret()
+    token = token_dict.get('personal_token')
     client = asana.Client.access_token(token)
     client.LOG_ASANA_CHANGE_WARNINGS = False
 
@@ -96,3 +99,8 @@ def createTask():
         'name' : 'Schedule posts for ' + start.strftime("%B %d, %Y") + " to " + two_weeks.strftime("%B %d, %Y"),
         'due_on': str(today + timedelta(days=5))
         })
+
+    return {
+        'statusCode' : 200,
+        'body' : json.dumps("Complete")
+    }
